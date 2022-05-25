@@ -1,0 +1,56 @@
+{{- if .Values.simplesaml.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: idp
+  name: test-idp-simplesaml
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: idp
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: idp
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "uaa-chart.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - image: "{{ .Values.simplesaml.image.repository }}:{{ .Values.simplesaml.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: simplesamlphp
+        ports: 
+        - containerPort: 8080
+        env:
+        - name: SIMPLESAMLPHP_SP_ASSERTION_CONSUMER_SERVICE
+          value: {{- printf " %s/saml/SSO/alias/auth-uaa" .Values.uaa.url }}
+        - name: SIMPLESAMLPHP_SP_SINGLE_LOGOUT_SERVICE
+          value: {{- printf " %s/saml/SingleLogout/alias/auth-uaa" .Values.uaa.url }}
+        - name: SIMPLESAMLPHP_SP_ENTITY_ID
+          value: {{ .Values.uaa.entityID }}
+        - name: SIMPLESAMLPHP_CONFIG_DIR
+          value: /var/www/simplesamlphp/config/
+        - name: SIMPLESAMLPHP_IDP_ADMIN_PASSWORD
+          value: secret
+        - name: SIMPLESAMLPHP_IDP_SECRET_SALT
+          value: secretsalt
+        volumeMounts:
+        - mountPath: /var/www/simplesamlphp/config/config.php
+          subPath: config.php
+          name: simplesaml-config
+        - mountPath: /var/www/simplesamlphp/config/authsources.php
+          subPath: authsources.php
+          name: simplesaml-config
+      volumes:
+      - name: simplesaml-config
+        configMap:
+          name: simplesaml-config
+{{- end }}

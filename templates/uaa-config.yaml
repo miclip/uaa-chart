@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: uaa-config
+stringData:
+  uaa.yml: |
+    url: {{ .Values.uaa.url }}
+    spring_profiles: saml,default,hsqldb
+    zones:
+      internal:
+        hostnames: []
+    {{- with .Values.uaa.ldap }}
+    ldap:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    issuer:
+      uri: {{ .Values.uaa.url }}
+    login:
+      branding:
+        consent:
+          text: Terms and Conditions
+          link: https://vmware.com
+        companyName: VMware
+        productLogo:
+        squareLogo: 
+        footerLegalText: VMware. All rights reserved.
+        footerLinks:
+          Terms: /exampleTerms
+          Privacy Agreement: privacy_example.html
+          Licensing: http://vmware.com/
+        banner:
+          logo:
+          text: Tanzu Kubernetes Grid Service
+          textColor: "#000000"
+          backgroundColor: '#0033A1'
+          link: https://vmware.com
+      entityBaseURL: {{ quote .Values.uaa.url }}
+      entityID: {{ quote .Values.uaa.entityID }}
+      {{- if or .Values.uaa.saml .Values.simplesaml.enabled }}
+      saml:
+        # default nameID if IdP nameid not set
+        nameID: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+        assertionConsumerIndex: 0
+        signMetaData: false
+        signRequest: false
+        socket:
+          connectionManagerTimeout: 10000
+          soTimeout: 10000
+        {{- if or .Values.uaa.saml.providers .Values.simplesaml.enabled }}
+        providers:
+          {{- with .Values.uaa.saml.providers }}
+            {{- toYaml . | nindent 10 }}
+          {{- end }}
+          {{- if .Values.simplesaml.enabled }}
+          simplesamlphp:
+            idpMetadata: {{- printf " %s/simplesaml/saml2/idp/metadata.php" .Values.simplesaml.url }} 
+            nameID: urn:oasis:names:tc:SAML:1.1:nameid-format:transient
+            assertionConsumerIndex: 0
+            metadataTrustCheck: false
+            showSamlLoginLink: true
+            linkText: 'Simple SAML IDP'
+            iconUrl: 'http://link.to/icon.jpg'
+            addShadowUserOnLogin: true
+            externalGroupsWhitelist:
+              - admin
+              - user
+            emailDomain:
+              - example.com
+            attributeMappings:
+              given_name: givenname
+              family_name: surname
+              email: email          
+              user_name: uid
+            providerDescription: 'Human readable description of this provider'
+          {{- end }}  
+        {{- end }}     
+      authorize:
+        url: {{- printf " %s/oauth/authorize" .Values.uaa.url }}
+      {{- end }}
+    {{- with .Values.uaa.oauth.clients }}
+    oauth:
+      client:
+        override: true
+      clients:
+        admin:
+          authorized-grant-types: client_credentials
+          authorities: "clients.read,clients.write,clients.secret,uaa.admin,scim.read,scim.write,password.write"
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.uaa.scim.users }}
+    scim:
+      users:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    uaa:  
+      url: {{ .Values.uaa.url }}
+      token:
+        url: {{- printf " %s/oauth/token" .Values.uaa.url }} 
+      approvals:
+        url: {{- printf " %s/approvals" .Values.uaa.url }}
+      login:
+        url: {{- printf " %s/authenticate" .Values.uaa.url }}
+  log4j2.properties: |
+    status = error
+    dest = err
+    name = UaaLog
+
+    property.log_pattern=[%d{yyyy-MM-dd'T'HH:mm:ss.nnnnnn}{GMT+0}Z] uaa%X{context} - %pid [%t] .... %5p --- %c{1}: %replace{%m}{(?<=password=|client_secret=)([^&]*)}{<redacted>}%n
+
+    appender.uaaDefaultAppender.type = Console
+    appender.uaaDefaultAppender.name = UaaDefaultAppender
+    appender.uaaDefaultAppender.layout.type = PatternLayout
+    appender.uaaDefaultAppender.layout.pattern = [UAA] ${log_pattern}
+
+    appender.uaaAuditAppender.type = Console
+    appender.uaaAuditAppender.name = UaaAuditAppender
+    appender.uaaAuditAppender.layout.type = PatternLayout
+    appender.uaaAuditAppender.layout.pattern = [UAA_AUDIT] ${log_pattern}
+
+    rootLogger.level = debug
+    rootLogger.appenderRef.uaaDefaultAppender.ref = UaaDefaultAppender
+
+    logger.UAAAudit.name = UAA.Audit
+    logger.UAAAudit.level = debug
+    logger.UAAAudit.additivity = true
+    logger.UAAAudit.appenderRef.auditEventLog.ref = UaaAuditAppender
+
+    logger.cfIdentity.name = org.cloudfoundry.identity
+    logger.cfIdentity.level = debug
+    logger.cfIdentity.additivity = true
+    logger.cfIdentity.appenderRef.uaaDefaultAppender.ref = UaaDefaultAppender
+
+   

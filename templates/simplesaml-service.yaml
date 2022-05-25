@@ -1,0 +1,17 @@
+{{- if .Values.simplesaml.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: simplesaml
+  labels:
+    {{- include "uaa-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.simplesaml.service.type }}
+  ports:
+    - port: {{ .Values.simplesaml.service.port }}
+      targetPort: {{ .Values.simplesaml.service.port }}
+      protocol: TCP
+      name: http
+  selector:
+    app: idp
+{{- end }}

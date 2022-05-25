@@ -1,0 +1,179 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "uaa-chart.fullname" . }}
+  labels:
+    {{- include "uaa-chart.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "uaa-chart.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "uaa-chart.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "uaa-chart.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: build-uaa-truststore
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        command:
+        - 'sh'
+        - '-c'
+        - |
+          find_keytool_or_fail_fast() {
+            local has_keytool
+            ls "${JAVA_HOME}"/bin/keytool
+            has_keytool=$?
+
+            if [ ${has_keytool} -ne 0 ]; then
+              exit ${has_keytool}
+            fi
+          }
+
+          import_cert() {
+            local pemfile="${1}"
+            local alias="${2}"
+
+            echo "Adding ${pemfile} to truststore"
+
+            # Have to use cat instead of -file
+            # because keytool won't understand all of the filenames!
+            cat "${pemfile}" | "${JAVA_HOME}"/bin/keytool \
+              -noprompt \
+              -import \
+              -trustcacerts \
+              -alias "${alias}" \
+              -keystore "${TRUSTSTORE_FILE}" \
+              -storepass "${TRUSTSTORE_PASSWORD}"
+          }
+
+          get_alias() {
+            local pemfile="${1}"
+            basename "${pemfile}" .pem
+          }
+
+          add_ca_certs() {
+            local has_ca_certs
+            ls ${SECRETS_DIR}/ca_certs/*.pem
+            has_ca_certs=$?
+
+            if [ ${has_ca_certs} -eq 0 ]; then
+              for cert in ${SECRETS_DIR}/ca_certs/*.pem; do
+                import_cert "${cert}" "$(get_alias $cert)"
+              done
+            fi
+          }
+
+          add_system_certs() {
+            for cert in $OS_CERTS_DIR/*.pem; do
+              import_cert "${cert}" "$(get_alias $cert)"
+            done
+          }
+
+          main() {
+            find_keytool_or_fail_fast
+            add_ca_certs
+            add_system_certs
+          }
+
+          main
+        env:
+        - name: SECRETS_DIR
+          value: /secrets
+        - name: TRUSTSTORE_FILE
+          value: /etc/truststore/uaa.pkcs12.truststore
+        - name: TRUSTSTORE_PASSWORD
+          value: {{ .Values.trustStorePassword }}
+        - name: JAVA_HOME
+          value: /layers/paketo-buildpacks_bellsoft-liberica/jre
+        - name: OS_CERTS_DIR
+          value: /etc/ssl/certs
+        volumeMounts:
+        - name: uaa-certs
+          mountPath: secrets/ca_certs
+          readOnly: true
+        - name: truststore-dir
+          mountPath: /etc/truststore
+      containers:
+        - securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          name: uaa
+          ports:
+            - containerPort: {{ .Values.uaa.port }}
+          resources: {}
+          env:
+            - name: JAVA_OPTS
+              value: -Djava.security.egd=file:/dev/./urandom -Dlogging.config=/uaa/log4j2.properties -Dlog4j.configurationFile=/uaa/log4j2.properties -DCLOUDFOUNDRY_CONFIG_PATH=/uaa -DSECRETS_DIR=/secrets -Djavax.net.ssl.trustStore=/etc/truststore/uaa.pkcs12.truststore -Djavax.net.ssl.trustStoreType=PKCS12 -Dstatsd.enabled=true -Dservlet.session-store=database -Djavax.net.ssl.trustStorePassword={{ .Values.trustStorePassword }}
+            - name: BPL_TOMCAT_ACCESS_LOGGING
+              value: "y"
+          volumeMounts:
+            - mountPath: /uaa
+              name: uaa-config
+            - mountPath: /secrets/saml_keys.yml
+              subPath: saml_keys.yml
+              name: uaa-keys
+            - mountPath: /secrets/encryption_keys.yml
+              subPath: encryption_keys.yml
+              name: uaa-keys
+            - mountPath: /secrets/jwt_policy_signing_keys.yml
+              subPath: jwt_policy_signing_keys.yml
+              name: uaa-keys
+            - mountPath: /secrets/admin_client_secret.yml
+              name: uaa-admin-client-credentials
+              subPath: admin_client_credentials.yml
+            - mountPath: /layers/paketo-buildpacks_apache-tomcat/catalina-base/conf/server.xml
+              name: uaa-tomcat
+              subPath: server.xml
+            - name: truststore-dir
+              mountPath: /etc/truststore
+              readOnly: true
+      volumes:
+        - name: uaa-config
+          secret:
+            secretName: uaa-config
+        - name: uaa-keys
+          secret:
+            secretName: uaa-keys
+        - name: uaa-certs
+          secret:
+            secretName: uaa-trustedcertificates
+        - name: uaa-admin-client-credentials
+          secret: 
+            secretName: uaa-admin-client-credentials
+        - name: uaa-tomcat
+          configMap:
+            name: uaa-tomcat
+        - name: truststore-dir
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always

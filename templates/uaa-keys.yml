@@ -1,0 +1,46 @@
+{{ $certSaml := genSelfSignedCert .Values.uaa.url nil nil 365 }}
+{{ $certSigning := genSelfSignedCert .Values.uaa.url nil nil 365 }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: uaa-keys
+stringData:  
+  encryption_keys.yml: | 
+    encryption:
+      active_key_label: generated-encryption-key
+      encryption_keys:
+        - label: generated-encryption-key
+          passphrase: {{- randAlphaNum 20 | indent 1 }}
+  saml_keys.yml: |
+    login:
+      saml:
+        {{- if .Values.uaa.saml.activeKeyId }}
+        activeKeyId: {{ .Values.uaa.saml.activeKeyId }}
+        {{- else}}
+        activeKeyId: generated-key-1
+        {{- end}}        
+        {{- if .Values.uaa.saml.activeKeyId }}
+        {{- with .Values.uaa.saml.keys }}
+        keys:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        {{- else}}
+        keys:
+          generated-key-1:
+            key: {{ $certSaml.Key | toYaml | indent 12 }}
+            passphrase: password
+            certificate: {{ $certSaml.Cert | toYaml | indent 12 }}
+        {{- end }}
+  jwt_policy_signing_keys.yml: |
+    jwt:
+      token:
+        signing-key: {{ $certSigning.Key | toYaml | indent 8 }}
+        claims:
+          exclude:
+          - authorities
+      policy:
+        activeKeyId: generated-signingkey-1
+        keys:
+          generated-signingkey-1:
+            key: {{ $certSigning.Key | toYaml | indent 12 }}
+            certificate: {{ $certSigning.Cert | toYaml | indent 12 }}

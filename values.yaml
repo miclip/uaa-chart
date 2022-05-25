@@ -1,0 +1,218 @@
+# Default values for uaa-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: cloudfoundry/uaa
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "75.12.0"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+simplesaml:
+  # enables an test SAML IdP be deployed and configured with UAA
+  enabled: true
+  url: https://simplesaml.miclip.io
+  image: 
+    repository: kenchan0130/simplesamlphp
+    pullPolicy: IfNotPresent
+    tag: "latest"
+  service:
+    type: ClusterIP
+    port: 8080
+  ingress:    
+    enabled: true
+    className: "contour"
+    annotations: 
+      cert-manager.io/cluster-issuer: letsencrypt-staging
+    hosts:
+      - host: simplesaml.miclip.io
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: 
+    - secretName: chart-simplesaml-tls
+      hosts:
+        - simplesaml.miclip.io
+  
+
+uaa:
+  port: 8080
+  url: https://uaa.miclip.io
+  entityID: auth-uaa
+  scim:
+    users:
+     # - "admin|password|scim.write,scim.read,openid,uaa.admin"
+  #ldap:
+    # profile:
+    #   file: ldap/ldap-search-and-bind.xml
+    # base:
+    #   url: 'ldaps://ldap.vmware.com:3269/'
+    #   userDn: 'CN=LDAPBindUser,OU=Accounts,DC=vmware,DC=com'
+    #   password: ''
+    #   searchBase: 'DC=vmware,DC=com'
+    #   searchFilter: 'cn={0}'
+    #   mailAttributeName: 'UserPrincipalName'
+    # groups:
+    #   file: 'ldap/ldap-groups-map-to-scopes.xml'
+    #   searchBase: 'DC=vmware,DC=com'
+    #   groupSearchFilter: 'member={0}'
+    #   searchSubtree: true
+    #   maxSearchDepth: 10
+    #   autoAdd: true
+    #   ignorePartialResultException: true
+  oauth:
+    clients:
+      pinniped:
+        access-token-validity: 1200
+        authorized-grant-types: authorization_code,refresh_token
+        override: true
+        redirect-uri: "http://127.0.0.1:12345/callback"
+        refresh-token-validity: 3600
+        scope: openid,email,profile,roles
+        secret: ""
+        autoapprove: true
+      # concourse:
+      #   access-token-validity: 1200
+      #   authorized-grant-types: authorization_code,refresh_token
+      #   override: true
+      #   redirect-uri: "https://concourse.miclip.io/sky/issuer/callback"
+      #   refresh-token-validity: 3600
+      #   scope: openid,email,profile,roles
+      #   secret: secret
+      # credhub_cli:
+      #   override: true
+      #   authorized-grant-types: password,refresh_token
+      #   scope: credhub.read,credhub.write
+      #   authorities: uaa.resource
+      #   access-token-validity: 86400
+      #   refresh-token-validity: 172800
+      #   secret: ""
+      # credhub_client:
+      #   override: true
+      #   authorized-grant-types: client_credentials
+      #   secret: secret
+      #   scope: uaa.none
+      #   authorities: credhub.read,credhub.write
+      #   access-token-validity: 86400
+  saml:
+    # certificates for this service provider, generated if not provided.
+    # activeKeyId: key-1-values-file
+    # keys:
+    #   key-1-values-file:
+    #     key: |
+    #       -----BEGIN RSA PRIVATE KEY-----
+    #       MIIEowIBAAKCAQEAv0ZQ+wXrBm5bBAcm6UFGdhyMoE/g2wrI2PB+VKVfqNN2FccJ
+    #       BWPCd1reHWHaAhKzzY5lFwW/u65Nd2pvR+zStQuoGpJ9uBNffLYDM0LqNEw5TILO
+    #       .............
+    #       rKJ68ZEolL0sIpvkzUOeBhkY0iTkgFKPOi8AxN76VBAA5vJqsMekgzHBcCs7rxCg
+    #       wxung9DUYJUbF6OMsYXZ2aXMERwyyATGG8PmCLyvb4rzgGf+SDCC
+    #       -----END RSA PRIVATE KEY-----
+    #     passphrase: password
+    #     certificate: |
+    #       -----BEGIN CERTIFICATE-----
+    #       MIIDCTCCAfGgAwIBAgIQJTTnBM6PezmBrgUR6s/VSDANBgkqhkiG9w0BAQsFADAg
+    #       MR4wHAYDVQQDExVodHRwczovL3VhYS5taWNsaXAuaW8wHhcNMjIwNTI1MTM1OTAx
+    #       ..........
+    #       uzDWmZ1z/DsP4oyErSa4enahOaXvetRSahDQYq5ZRSoKT0pVIgii1tcsxvLZg+Bf
+    #       ujpCXKM3dHAY9mshaQ==
+    #       -----END CERTIFICATE-----
+    
+    # default nameID if IdP nameID not set
+    # nameID: 'urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified'
+    providers:
+      # SAML providers or IdP
+      # simplesamlphp:
+      #   idpMetadata: https://simplesaml.miclip.io/simplesaml/saml2/idp/metadata.php
+      #   nameID: urn:oasis:names:tc:SAML:1.1:nameid-format:transient
+      #   assertionConsumerIndex: 0
+      #   metadataTrustCheck: false
+      #   showSamlLoginLink: true
+      #   linkText: 'Simple SAML IDP'
+      #   iconUrl: 'http://link.to/icon.jpg'
+      #   addShadowUserOnLogin: true
+      #   externalGroupsWhitelist:
+      #     - admin
+      #     - user
+      #   emailDomain:
+      #     - example.com
+      #   attributeMappings:
+      #     given_name: givenname
+      #     family_name: surname
+      #     email: email          
+      #     user_name: uid
+      #   providerDescription: 'Human readable description of this provider'
+
+
+trustStorePassword: changeme
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: "contour"
+  annotations: 
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+  hosts:
+    - host: uaa.miclip.io
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: 
+  - secretName: chart-uaa-tls
+    hosts:
+      - uaa.miclip.io
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

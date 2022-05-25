@@ -1,0 +1,16 @@
+{{- $fullName := include "uaa-chart.fullname" . -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "uaa-chart.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.uaa.port }}
+      targetPort: {{ .Values.uaa.port }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "uaa-chart.selectorLabels" . | nindent 4 }}
