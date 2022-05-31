@@ -106,9 +106,11 @@ spec:
         - name: OS_CERTS_DIR
           value: /etc/ssl/certs
         volumeMounts:
+        {{- if .Values.uaa.trustedCertificates }}
         - name: uaa-certs
           mountPath: secrets/ca_certs
           readOnly: true
+        {{end}}
         - name: truststore-dir
           mountPath: /etc/truststore
       containers:
@@ -175,9 +177,11 @@ spec:
         - name: uaa-keys
           secret:
             secretName: uaa-keys
+        {{- if .Values.uaa.trustedCertificates }}
         - name: uaa-certs
           secret:
-            secretName: uaa-trustedcertificates
+            secretName: uaa-trusted-certificates
+        {{end}}
         - name: uaa-admin-client-credentials
           secret: 
             secretName: uaa-admin-client-credentials
