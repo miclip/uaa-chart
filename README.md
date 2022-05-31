@@ -6,3 +6,9 @@ Included in the chart is a test SAML IdP (SimpleSAMLPHP) and an openldap server.
 
 With these configured UAA can be setup via OIDC\OAUTH to provide authentication flows for concourse, credhub or pinniped. 
 
+~~~sh 
+
+helm dependency build  
+helm install uaa . -n uaa --create-namespace
+
+~~~
