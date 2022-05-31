@@ -1,0 +1,9 @@
+{{- with .Values.uaa.trustedCertificates }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: uaa-trusted-certificates
+stringData:
+{{ toYaml . | indent 2 }}
+{{end}}
+
