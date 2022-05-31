@@ -118,7 +118,9 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           name: uaa
           ports:
-            - containerPort: {{ .Values.uaa.port }}
+            - name: http-uaa
+              containerPort: {{ .Values.uaa.port }}
+              protocol: TCP
           resources: {}
           env:
             - name: JAVA_OPTS
@@ -155,6 +157,17 @@ spec:
             - name: truststore-dir
               mountPath: /etc/truststore
               readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http-uaa
+            failureThreshold: 25
+            initialDelaySeconds: 60
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http-uaa
       volumes:
         - name: uaa-config
           secret:

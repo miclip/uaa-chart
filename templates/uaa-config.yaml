@@ -34,8 +34,8 @@ stringData:
           text: Terms and Conditions
           link: https://vmware.com
         companyName: VMware
-        productLogo:
-        squareLogo: 
+        productLogo: 
+        squareLogo:
         footerLegalText: VMware. All rights reserved.
         footerLinks:
           Terms: /exampleTerms
