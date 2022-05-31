@@ -26,6 +26,17 @@ serviceAccount:
 
 podAnnotations: {}
 
+## Enable OpenLDAP server for testing 
+##
+## Deploys an openldap deployment with 2 users john/password and jane/password
+## see more configuration with in the ./template/ldap-config file. 
+ldap:
+  enabled: true
+  image: 
+    repository: osixia/openldap
+    pullPolicy: IfNotPresent
+    tag: "1.4.0"
+
 ## 
 ## Enable a test SAML IdP to experiment with 
 simplesaml:
@@ -84,24 +95,23 @@ uaa:
   ##
   ## LDAP configuration 
   ##
-  #ldap:
-    # profile:
-    #   file: ldap/ldap-search-and-bind.xml
-    # base:
-    #   url: 'ldaps://ldap.vmware.com:3269/'
-    #   userDn: 'CN=LDAPBindUser,OU=Accounts,DC=vmware,DC=com'
-    #   password: ''
-    #   searchBase: 'DC=vmware,DC=com'
-    #   searchFilter: 'cn={0}'
-    #   mailAttributeName: 'UserPrincipalName'
-    # groups:
-    #   file: 'ldap/ldap-groups-map-to-scopes.xml'
-    #   searchBase: 'DC=vmware,DC=com'
-    #   groupSearchFilter: 'member={0}'
-    #   searchSubtree: true
-    #   maxSearchDepth: 10
-    #   autoAdd: true
-    #   ignorePartialResultException: true
+  ldap:
+    profile:
+      file: ldap/ldap-search-and-bind.xml
+    base:
+      url: 'ldap://uaa-ldap:389/'
+      userDn: 'cn=admin,dc=example,dc=org'
+      password: 'admin'
+      searchBase: 'ou=People,dc=example,dc=org'
+      searchFilter: 'cn={0}'
+    groups:
+      file: 'ldap/ldap-groups-map-to-scopes.xml'
+      searchBase: 'ou=Groups,dc=example,dc=org'
+      groupSearchFilter: 'member={0}'
+      searchSubtree: true
+      maxSearchDepth: 10
+      autoAdd: true
+      ignorePartialResultException: true
   ##
   ## OAUTH clients 
   ##
@@ -259,7 +269,7 @@ postgresql:
   ##
   ## Set to false if using the default in memory database
   ##
-  enabled: false
+  enabled: true
 
   ## Provide a name to substitute for the full name of postgresql resources
   ## ps.: Resources will not be appended with "-postgresql"

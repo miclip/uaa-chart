@@ -1,0 +1,47 @@
+{{- if .Values.ldap.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ldap
+  name: uaa-openldap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ldap
+  strategy: {}
+  template:
+    metadata:
+      labels:
+        app: ldap
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "uaa-chart.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - image: "{{ .Values.ldap.image.repository }}:{{ .Values.ldap.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        name: openldap
+        ports: 
+        - containerPort: 389
+        - containerPort: 636
+        command: ["/container/tool/run", "--copy-service"]
+        env:
+        - name: LDAP_TLS_VERIFY_CLIENT
+          value: try
+        volumeMounts:
+        - mountPath: /container/service/slapd/assets/config/bootstrap/ldif/custom/config-ldap.ldif
+          subPath: config-ldap.ldif
+          name: ldap-config
+
+      volumes:
+      - name: ldap-config
+        configMap:
+          name: ldap-config
+          defaultMode: 0666
+{{- end }}

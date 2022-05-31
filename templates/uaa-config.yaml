@@ -5,7 +5,7 @@ metadata:
 stringData:
   uaa.yml: |
     url: {{ .Values.uaa.url }}
-    spring_profiles: default,{{ if .Values.uaa.saml }}saml,{{end}}{{ if .Values.postgresql.enabled  }}postgresql{{else}}hsqldb{{end}}
+    spring_profiles: default,{{ if .Values.uaa.saml }}saml,{{end}}{{ if .Values.uaa.ldap }}ldap,{{end}}{{ if .Values.postgresql.enabled  }}postgresql{{else}}hsqldb{{end}}
     zones:
       internal:
         hostnames: []
