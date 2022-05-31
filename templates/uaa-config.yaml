@@ -5,7 +5,7 @@ metadata:
 stringData:
   uaa.yml: |
     url: {{ .Values.uaa.url }}
-    spring_profiles: saml,default,hsqldb
+    spring_profiles: default,{{ if .Values.uaa.saml }}saml,{{end}}{{ if .Values.postgresql.enabled  }}postgresql{{else}}hsqldb{{end}}
     zones:
       internal:
         hostnames: []
@@ -13,6 +13,19 @@ stringData:
     ldap:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+    {{- if .Values.postgresql.enabled }}
+    database:
+      driverClassName: org.postgresql.Driver
+      url: "jdbc:postgresql://uaa-postgresql/uaa"
+      maxactive: 100
+      maxidle: 10
+      minidle: 3
+      removeabandoned: false
+      logabandoned: true
+      abandonedtimeout: 300
+      evictionintervalms: 15000
+      caseinsensitive: false
+    {{end}}
     issuer:
       uri: {{ .Values.uaa.url }}
     login:

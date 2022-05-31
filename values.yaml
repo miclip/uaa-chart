@@ -4,6 +4,7 @@
 
 replicaCount: 1
 
+## UAA image to use
 image:
   repository: cloudfoundry/uaa
   pullPolicy: IfNotPresent
@@ -25,10 +26,20 @@ serviceAccount:
 
 podAnnotations: {}
 
+## 
+## Enable a test SAML IdP to experiment with 
 simplesaml:
-  # enables an test SAML IdP be deployed and configured with UAA
+  ##
+  ## enables an test SAML IdP be deployed and configured with UAA
+  ##
   enabled: true
+  ##
+  ## URL for the test IdP
+  ##
   url: https://simplesaml.miclip.io
+  ##
+  ## SimpleSAML image
+  ##
   image: 
     repository: kenchan0130/simplesamlphp
     pullPolicy: IfNotPresent
@@ -36,6 +47,9 @@ simplesaml:
   service:
     type: ClusterIP
     port: 8080
+  ##
+  ## enables Ingress for the test IdP
+  ##
   ingress:    
     enabled: true
     className: "contour"
@@ -51,14 +65,25 @@ simplesaml:
       hosts:
         - simplesaml.miclip.io
   
-
+##
+## Configuration for UAA
+##
 uaa:
   port: 8080
   url: https://uaa.miclip.io
+  ##
+  ## String that Identifies the ServiceProvider (UAA)
+  ##
   entityID: auth-uaa
+  ##
+  ## Configure any default local users to be created 
+  ##
   scim:
     users:
      # - "admin|password|scim.write,scim.read,openid,uaa.admin"
+  ##
+  ## LDAP configuration 
+  ##
   #ldap:
     # profile:
     #   file: ldap/ldap-search-and-bind.xml
@@ -77,6 +102,9 @@ uaa:
     #   maxSearchDepth: 10
     #   autoAdd: true
     #   ignorePartialResultException: true
+  ##
+  ## OAUTH clients 
+  ##
   oauth:
     clients:
       pinniped:
@@ -111,6 +139,9 @@ uaa:
       #   scope: uaa.none
       #   authorities: credhub.read,credhub.write
       #   access-token-validity: 86400
+  ##
+  ## Configure the service provider (UAA)
+  ##
   saml:
     # certificates for this service provider, generated if not provided.
     # activeKeyId: key-1-values-file
@@ -158,8 +189,14 @@ uaa:
       #     email: email          
       #     user_name: uid
       #   providerDescription: 'Human readable description of this provider'
+  ## Configuration values for the postgresql dependency.
+  ## Ref: https://github.com/helm/charts/blob/master/stable/postgresql/README.md
+  ##
+  
 
-
+##
+## Java keystore for certificates 
+##
 trustStorePassword: changeme
 
 podSecurityContext: {}
@@ -216,3 +253,62 @@ nodeSelector: {}
 tolerations: []
 
 affinity: {}
+
+postgresql:
+  ## Use the PostgreSQL chart dependency.
+  ##
+  ## Set to false if using the default in memory database
+  ##
+  enabled: false
+
+  ## Provide a name to substitute for the full name of postgresql resources
+  ## ps.: Resources will not be appended with "-postgresql"
+  ##
+  fullnameOverride:
+
+  ### PostgreSQL User to create.
+  ##
+  postgresqlUsername: uaa
+
+  ## PostgreSQL Password for the new user.
+  ## If not set, a random 10 characters password will be used via a secret.
+  ##
+  # postgresqlPassword: 
+
+  ## PostgreSQL Database to create.
+  ##
+  postgresqlDatabase: uaa
+
+  ## Allows for setting a specific cluster ip for the PostgreSQL
+  ## service.
+  service:
+    clusterIP:
+
+  ## Persistent Volume Storage configuration for PostgreSQL.
+  ##
+  ## Ref: https://kubernetes.io/docs/user-guide/persistent-volumes
+  ##
+  persistence:
+    ## Enable PostgreSQL persistence using Persistent Volume Claims.
+    ##
+    enabled: true
+
+    ## Persistent Volume Storage Class to be used by PersistentVolumes created
+    ## for PostgreSQL.
+    ##
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    storageClass:
+
+    ## Persistent Volume Access Mode.
+    ##
+    accessModes:
+      - ReadWriteOnce
+
+    ## Persistent Volume Storage Size.
+    ##
+    size: 8Gi

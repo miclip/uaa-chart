@@ -125,6 +125,15 @@ spec:
               value: -Djava.security.egd=file:/dev/./urandom -Dlogging.config=/uaa/log4j2.properties -Dlog4j.configurationFile=/uaa/log4j2.properties -DCLOUDFOUNDRY_CONFIG_PATH=/uaa -DSECRETS_DIR=/secrets -Djavax.net.ssl.trustStore=/etc/truststore/uaa.pkcs12.truststore -Djavax.net.ssl.trustStoreType=PKCS12 -Dstatsd.enabled=true -Dservlet.session-store=database -Djavax.net.ssl.trustStorePassword={{ .Values.trustStorePassword }}
             - name: BPL_TOMCAT_ACCESS_LOGGING
               value: "y"
+            {{- if .Values.postgresql.enabled }}
+            - name: DATABASE_USERNAME
+              value: {{ .Values.postgresql.postgresqlUsername }}
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: uaa-postgresql
+                  key: postgresql-password
+            {{- end}}
           volumeMounts:
             - mountPath: /uaa
               name: uaa-config

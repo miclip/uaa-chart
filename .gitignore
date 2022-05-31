@@ -1,2 +1,4 @@
 template.yaml
 cluster-issuer.yaml
+/charts
+chart.lock
